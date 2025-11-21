@@ -1,0 +1,43 @@
+import { Router, type Request, type Response } from "express";
+import { Telegraf, type Context } from "telegraf";
+
+type BotInstance = Telegraf<Context>;
+
+function getRequestIp(req: Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") {
+    return forwarded.split(",")[0].trim();
+  }
+  if (Array.isArray(forwarded) && forwarded.length > 0) {
+    return forwarded[0];
+  }
+  return req.ip || req.socket.remoteAddress || "unknown";
+}
+
+export function createWebhookRouter(bot: BotInstance, chatId: string): Router {
+  const router = Router();
+
+  router.get("/test", async (req: Request, res: Response) => {
+    const ip = getRequestIp(req);
+
+    await bot.telegram.sendMessage(
+        chatId,
+        `GET /webhook/test\nIP: ${ip}\nQuery: ${JSON.stringify(req.query)}`
+    );
+
+    res.json({ ok: true });
+  });
+
+  router.post("/test", async (req: Request, res: Response) => {
+    const ip = getRequestIp(req);
+
+    await bot.telegram.sendMessage(
+        chatId,
+        `POST /webhook/test\nIP: ${ip}\nBody: ${JSON.stringify(req.body)}`
+    );
+
+    res.json({ ok: true });
+  });
+
+  return router;
+}
